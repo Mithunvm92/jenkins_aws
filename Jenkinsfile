@@ -1,5 +1,3 @@
-// ------------------------- Copying repo in EC2 -------------------------
-
 pipeline {
     agent any
 
@@ -19,12 +17,10 @@ pipeline {
         stage('Copy Application to EC2') {
             steps {
                 echo 'Deploying to EC2...'
-                sh "echo Workspace is ${WORKSPACE}"
-                sh "ls -la ${WORKSPACE}"
 
                 sshagent(['aws-ec2-cred']) {
                     sh """
-                        scp -o StrictHostKeyChecking=no -r ${WORKSPACE}/* ${EC2_HOST}:${REMOTE_DIR}
+                        scp -o StrictHostKeyChecking=no -r ${WORKSPACE}/. ${EC2_HOST}:${REMOTE_DIR}
                     """
                 }
             }
@@ -34,11 +30,11 @@ pipeline {
             steps {
                 sshagent(['aws-ec2-cred']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} '
-                        sudo apt update &&
-                        sudo apt install -y python3-pip &&
-                        pip3 install streamlit pytest
-                        '
+                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
+                            sudo apt update &&
+                            sudo apt install -y python3-pip &&
+                            sudo pip3 install streamlit pytest
+                        "
                     """
                 }
             }
@@ -48,9 +44,10 @@ pipeline {
             steps {
                 sshagent(['aws-ec2-cred']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} '
-                        pytest ${REMOTE_DIR}/test_calculator.py
-                        '
+                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
+                            cd ${REMOTE_DIR} &&
+                            pytest test_calculator.py
+                        "
                     """
                 }
             }
@@ -60,9 +57,10 @@ pipeline {
             steps {
                 sshagent(['aws-ec2-cred']) {
                     sh """
-                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} '
-                        nohup streamlit run ${REMOTE_DIR}/calculator.py --server.port 8501 &
-                        '
+                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} "
+                            cd ${REMOTE_DIR} &&
+                            nohup streamlit run calculator.py --server.port 8501 > app.log 2>&1 &
+                        "
                     """
                 }
             }
