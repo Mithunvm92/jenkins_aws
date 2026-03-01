@@ -1,83 +1,80 @@
-#-------------------------Copying repo in ec2------------------------------------
+// ------------------------- Copying repo in EC2 -------------------------
+
 pipeline {
     agent any
-    environment{
+
+    environment {
         EC2_HOST = 'ubuntu@13.233.100.29'
         REMOTE_DIR = '/home/ubuntu'
     }
 
     stages {
-        stage('Cloning the git repo') {
+
+        stage('Clone Repository') {
             steps {
-                // Cloning the GitHub repository into the Jenkins workspace
                 git url: 'https://github.com/Mithunvm92/jenkins_aws.git', branch: 'main'
             }
         }
-        stage('Coping web application to EC2'){
-            steps{
-                echo 'Deploying into the ec2'
-                sh "echo 'workspace directory is ${WORKSPACE}'"
-                sh "ls ${WORKSPACE}"
-                sh "pwd"
-                sshagent(['aws-ec2-cred']){
-                    sh "scp -o StrictHostKeyChecking=no ${WORKSPACE}/* ${EC2_HOST}:${REMOTE_DIR}"
-                }
-            }
-        }
-        stage('Build') {
+
+        stage('Copy Application to EC2') {
             steps {
-                // Install dependencies using pip
-                sshagent(['aws-ec2-cred']){
-                    sh 'sudo apt install -y python3-pip'
-                    sh 'sudo pip install streamlit'
-                    sh 'sudo pip install pytest'
-                    mail bcc: '', body: 'hello build is sucessfull', cc: '', from: '', replyTo: '', subject: 'email form jenkins', to: 'adarsh307kumar@gmail.com'
+                echo 'Deploying to EC2...'
+                sh "echo Workspace is ${WORKSPACE}"
+                sh "ls -la ${WORKSPACE}"
+
+                sshagent(['aws-ec2-cred']) {
+                    sh """
+                        scp -o StrictHostKeyChecking=no -r ${WORKSPACE}/* ${EC2_HOST}:${REMOTE_DIR}
+                    """
                 }
             }
         }
-        stage('Test') {
-            steps{
-                sh 'sudo pytest /home/ubuntu/test_calculator.py'
-                mail bcc: '', body: 'hello Testing is sucessfull', cc: '', from: '', replyTo: '', subject: 'email form jenkins', to: 'adarsh307kumar@gmail.com'
-                }
-        }
-        stage('Deploy') {
-            when {
-                expression {
-                    // Check if the previous stage (Test) was successful
-                    currentBuild.resultIsBetterOrEqualTo('SUCCESS')
-                }
-            }
+
+        stage('Install Dependencies on EC2') {
             steps {
-                sh 'sudo streamlit run /home/ubuntu/calculator.py'
+                sshagent(['aws-ec2-cred']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} '
+                        sudo apt update &&
+                        sudo apt install -y python3-pip &&
+                        pip3 install streamlit pytest
+                        '
+                    """
+                }
             }
         }
-        
-        // stage('email') {
-        //     steps {
-        //         mail bcc: '', body: 'hello build is sucessfull', cc: '', from: '', replyTo: '', subject: 'email form jenkins', to: 'adarsh307kumar@gmail.com'
-        //     }
-        // }
-    
+
+        stage('Run Tests on EC2') {
+            steps {
+                sshagent(['aws-ec2-cred']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} '
+                        pytest ${REMOTE_DIR}/test_calculator.py
+                        '
+                    """
+                }
+            }
+        }
+
+        stage('Deploy Application') {
+            steps {
+                sshagent(['aws-ec2-cred']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${EC2_HOST} '
+                        nohup streamlit run ${REMOTE_DIR}/calculator.py --server.port 8501 &
+                        '
+                    """
+                }
+            }
+        }
     }
-    post{
-        success{
-            echo 'cloning successfully completed'
+
+    post {
+        success {
+            echo 'Pipeline completed successfully'
         }
-        failure{
-            echo 'Cloning failed'
+        failure {
+            echo 'Pipeline failed'
         }
     }
 }
-#-------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
