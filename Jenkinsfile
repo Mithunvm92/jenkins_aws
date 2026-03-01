@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        EC2_HOST = 'ubuntu@13.233.100.29'
+        EC2_HOST = 'ubuntu@localhost'
         REMOTE_DIR = '/home/ubuntu'
     }
 
@@ -76,3 +76,4 @@ pipeline {
         }
     }
 }
+
