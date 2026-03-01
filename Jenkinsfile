@@ -2,7 +2,7 @@
 pipeline {
     agent any
     environment{
-        EC2_HOST = 'ubuntu@13.234.75.100'
+        EC2_HOST = 'ubuntu@13.233.100.29'
         REMOTE_DIR = '/home/ubuntu'
     }
 
@@ -10,7 +10,7 @@ pipeline {
         stage('Cloning the git repo') {
             steps {
                 // Cloning the GitHub repository into the Jenkins workspace
-                git url: 'https://github.com/AdarshIITDH/jenkins_aws.git', branch: 'main'
+                git url: 'https://github.com/Mithunvm92/jenkins_aws.git', branch: 'main'
             }
         }
         stage('Coping web application to EC2'){
@@ -70,6 +70,7 @@ pipeline {
     }
 }
 #-------------------------------------------------------------
+
 
 
 
